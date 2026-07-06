@@ -132,6 +132,22 @@ chmod -R 755 feeds/packages/utils/modemdata/files/usr/share
 \cp -r ../configs/my_defconfig-8x-full .config
 cat ../configs/homelab-packages.config >> .config
 make defconfig
+
+# Force Atheros common bits for TL-WN722N v1 / ath9k_htc.
+# Wozi's pro-8x-unifi does not build Atheros USB, so our homelab overlay must force it.
+if grep -q '^CONFIG_PACKAGE_kmod-ath9k-htc=y' .config; then
+  grep -q '^config-y += ATH_CARDS ATH_COMMON' package/kernel/mac80211/ath.mk || \
+    sed -i '/config-$(call config_package,ath,regular smallbuffers) += ATH_CARDS ATH_COMMON/a config-y += ATH_CARDS ATH_COMMON' package/kernel/mac80211/ath.mk
+
+  grep -q '^CONFIG_PACKAGE_kmod-ath=y' .config || echo 'CONFIG_PACKAGE_kmod-ath=y' >> .config
+  grep -q '^CONFIG_PACKAGE_kmod-ath9k-common=y' .config || echo 'CONFIG_PACKAGE_kmod-ath9k-common=y' >> .config
+  grep -q '^CONFIG_PACKAGE_kmod-ath9k-htc=y' .config || echo 'CONFIG_PACKAGE_kmod-ath9k-htc=y' >> .config
+  grep -q '^CONFIG_PACKAGE_ath9k-htc-firmware=y' .config || echo 'CONFIG_PACKAGE_ath9k-htc-firmware=y' >> .config
+  grep -q '^# CONFIG_PACKAGE_kmod-ath9k is not set' .config || echo '# CONFIG_PACKAGE_kmod-ath9k is not set' >> .config
+
+  make defconfig
+fi
+
 echo "CONFIG_PACKAGE_trusted-firmware-a-mt7988-emmc-comb-4bg=y" >> .config
 echo "CONFIG_PACKAGE_trusted-firmware-a-mt7988-sdmmc-comb-4bg=y" >> .config
 echo "CONFIG_PACKAGE_trusted-firmware-a-mt7988-spim-nand-ubi-comb-4bg=y" >> .config
