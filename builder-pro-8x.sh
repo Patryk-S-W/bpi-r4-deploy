@@ -106,7 +106,12 @@ if [ -f feeds/amneziawg/kmod-amneziawg/Makefile ] && ! grep -q 'Wno-error=missin
   sed -i 's#EXTRA_CFLAGS="$(BUILDFLAGS)"#EXTRA_CFLAGS="$(BUILDFLAGS) -Wno-error=missing-prototypes"#' feeds/amneziawg/kmod-amneziawg/Makefile
 fi
 
-
+# Fix luci-proto-amneziawg APK package version on OpenWrt 25.12:
+# upstream creates version like 0.0.1-1-r1, apk rejects it.
+if [ -f feeds/amneziawg/luci-proto-amneziawg/Makefile ]; then
+  sed -i 's/^PKG_VERSION:=0\.0\.1-1$/PKG_VERSION:=0.0.1/' feeds/amneziawg/luci-proto-amneziawg/Makefile
+  sed -i 's/^PKG_RELEASE:=1-r1$/PKG_RELEASE:=1/' feeds/amneziawg/luci-proto-amneziawg/Makefile
+fi
 
 
 \cp ../my_files/fit.sh package/utils/fitblk/files/fit.sh
