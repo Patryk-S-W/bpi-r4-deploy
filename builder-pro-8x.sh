@@ -99,6 +99,14 @@ grep -q '^src-git amneziawg ' feeds.conf.default || echo 'src-git amneziawg http
 ./scripts/feeds update -a
 ./scripts/feeds install -a
 
+# Fix AmneziaWG kmod build with Linux 6.12/GCC 14:
+# send.c has wg_get_random_u32_inclusive without previous prototype
+# and OpenWrt treats missing-prototypes as Werror.
+if [ -f feeds/amneziawg/kmod-amneziawg/Makefile ] && ! grep -q 'Wno-error=missing-prototypes' feeds/amneziawg/kmod-amneziawg/Makefile; then
+  sed -i 's#EXTRA_CFLAGS="$(BUILDFLAGS)"#EXTRA_CFLAGS="$(BUILDFLAGS) -Wno-error=missing-prototypes"#' feeds/amneziawg/kmod-amneziawg/Makefile
+fi
+
+
 
 
 \cp ../my_files/fit.sh package/utils/fitblk/files/fit.sh
