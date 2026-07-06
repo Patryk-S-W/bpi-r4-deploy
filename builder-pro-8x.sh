@@ -94,6 +94,8 @@ chmod +x files/usr/sbin/boot-nand
 
 \cp -r ../my_files/luci-app-wifimgr/ package/luci-app-wifimgr/
 
+grep -q '^src-git amneziawg ' feeds.conf.default || echo 'src-git amneziawg https://github.com/amnezia-vpn/amneziawg-openwrt.git;master' >> feeds.conf.default
+
 ./scripts/feeds update -a
 ./scripts/feeds install -a
 
@@ -109,6 +111,7 @@ chmod -R 755 package/luci-app-wifimgr/root
 chmod -R 755 feeds/packages/utils/modemdata/files/usr/share
 
 \cp -r ../configs/my_defconfig-8x-full .config
+cat ../configs/homelab-packages.config >> .config
 make defconfig
 echo "CONFIG_PACKAGE_trusted-firmware-a-mt7988-emmc-comb-4bg=y" >> .config
 echo "CONFIG_PACKAGE_trusted-firmware-a-mt7988-sdmmc-comb-4bg=y" >> .config
