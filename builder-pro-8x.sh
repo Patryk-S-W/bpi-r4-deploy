@@ -31,6 +31,24 @@ git clone --branch main https://github.com/mediatek/mtk-openwrt-feeds mtk-openwr
 cd openwrt
 bash ../mtk-openwrt-feeds/autobuild/unified/autobuild.sh filogic-mac80211-mt798x_rfb-wifi7_nic prepare
 
+# Fix Atheros/TL-WN722N v1 build:
+# MTK mac80211 patch disables the whole upstream WLAN menu with "depends on n".
+# That prevents the Atheros backports tree from producing ath.ko, while OpenWrt
+# kmod-ath still tries to package drivers/net/wireless/ath/ath.ko.
+# Re-enable WLAN so kmod-ath + kmod-ath9k-htc build real modules.
+mkdir -p package/kernel/mac80211/patches/subsys
+cat > package/kernel/mac80211/patches/subsys/0099-fix-reenable-wlan-for-ath9k-htc.patch <<'EOF'
+--- a/drivers/net/wireless/Kconfig
++++ b/drivers/net/wireless/Kconfig
+@@ -4,7 +4,6 @@
+ 
+ menuconfig WLAN
+-	depends on n
+ 	bool "Wireless LAN"
+ 	depends on !S390
+ 	depends on NET
+EOF
+
 # platform.sh: register bpi-r4-pro-8x in fit_do_upgrade, fit_check_image, platform_copy_config
 python3 -c 'f="target/linux/mediatek/filogic/base-files/lib/upgrade/platform.sh"; c=open(f).read(); c=c.replace("\tbananapi,bpi-r4-lite|\\\n\tbazis,ax3000wm","\tbananapi,bpi-r4-lite|\\\n\tbananapi,bpi-r4-pro-8x|\\\n\tbazis,ax3000wm"); c=c.replace("\tbananapi,bpi-r4-lite|\\\n\tcmcc,rax3000m","\tbananapi,bpi-r4-lite|\\\n\tbananapi,bpi-r4-pro-8x|\\\n\tcmcc,rax3000m"); open(f,"w").write(c)'
 
@@ -132,24 +150,6 @@ chmod -R 755 feeds/packages/utils/modemdata/files/usr/share
 \cp -r ../configs/my_defconfig-8x-full .config
 cat ../configs/homelab-packages.config >> .config
 make defconfig
-
-# Force Atheros modules for TL-WN722N v1 / ath9k_htc.
-# Important: ATH_COMMON must be =m, not =y, because kmod-ath packages ath.ko.
-if grep -q '^CONFIG_PACKAGE_kmod-ath9k-htc=y' .config; then
-  # Remove previous broken force-to-y workaround if present.
-  sed -i '/^config-y += ATH_CARDS ATH_COMMON$/d' package/kernel/mac80211/ath.mk
-
-  # Force Atheros common code as module so drivers/net/wireless/ath/ath.ko is produced.
-  grep -q '^config-m += ATH_CARDS ATH_COMMON' package/kernel/mac80211/ath.mk || \
-    sed -i '/config-$(call config_package,ath,regular smallbuffers) += ATH_CARDS ATH_COMMON/a config-m += ATH_CARDS ATH_COMMON' package/kernel/mac80211/ath.mk
-
-  grep -q '^CONFIG_PACKAGE_kmod-ath=y' .config || echo 'CONFIG_PACKAGE_kmod-ath=y' >> .config
-  grep -q '^CONFIG_PACKAGE_kmod-ath9k-common=y' .config || echo 'CONFIG_PACKAGE_kmod-ath9k-common=y' >> .config
-  grep -q '^CONFIG_PACKAGE_kmod-ath9k-htc=y' .config || echo 'CONFIG_PACKAGE_kmod-ath9k-htc=y' >> .config
-  grep -q '^CONFIG_PACKAGE_ath9k-htc-firmware=y' .config || echo 'CONFIG_PACKAGE_ath9k-htc-firmware=y' >> .config
-
-  make defconfig
-fi
 
 echo "CONFIG_PACKAGE_trusted-firmware-a-mt7988-emmc-comb-4bg=y" >> .config
 echo "CONFIG_PACKAGE_trusted-firmware-a-mt7988-sdmmc-comb-4bg=y" >> .config
