@@ -133,17 +133,20 @@ chmod -R 755 feeds/packages/utils/modemdata/files/usr/share
 cat ../configs/homelab-packages.config >> .config
 make defconfig
 
-# Force Atheros common bits for TL-WN722N v1 / ath9k_htc.
-# Wozi's pro-8x-unifi does not build Atheros USB, so our homelab overlay must force it.
+# Force Atheros modules for TL-WN722N v1 / ath9k_htc.
+# Important: ATH_COMMON must be =m, not =y, because kmod-ath packages ath.ko.
 if grep -q '^CONFIG_PACKAGE_kmod-ath9k-htc=y' .config; then
-  grep -q '^config-y += ATH_CARDS ATH_COMMON' package/kernel/mac80211/ath.mk || \
-    sed -i '/config-$(call config_package,ath,regular smallbuffers) += ATH_CARDS ATH_COMMON/a config-y += ATH_CARDS ATH_COMMON' package/kernel/mac80211/ath.mk
+  # Remove previous broken force-to-y workaround if present.
+  sed -i '/^config-y += ATH_CARDS ATH_COMMON$/d' package/kernel/mac80211/ath.mk
+
+  # Force Atheros common code as module so drivers/net/wireless/ath/ath.ko is produced.
+  grep -q '^config-m += ATH_CARDS ATH_COMMON' package/kernel/mac80211/ath.mk || \
+    sed -i '/config-$(call config_package,ath,regular smallbuffers) += ATH_CARDS ATH_COMMON/a config-m += ATH_CARDS ATH_COMMON' package/kernel/mac80211/ath.mk
 
   grep -q '^CONFIG_PACKAGE_kmod-ath=y' .config || echo 'CONFIG_PACKAGE_kmod-ath=y' >> .config
   grep -q '^CONFIG_PACKAGE_kmod-ath9k-common=y' .config || echo 'CONFIG_PACKAGE_kmod-ath9k-common=y' >> .config
   grep -q '^CONFIG_PACKAGE_kmod-ath9k-htc=y' .config || echo 'CONFIG_PACKAGE_kmod-ath9k-htc=y' >> .config
   grep -q '^CONFIG_PACKAGE_ath9k-htc-firmware=y' .config || echo 'CONFIG_PACKAGE_ath9k-htc-firmware=y' >> .config
-  grep -q '^# CONFIG_PACKAGE_kmod-ath9k is not set' .config || echo '# CONFIG_PACKAGE_kmod-ath9k is not set' >> .config
 
   make defconfig
 fi
