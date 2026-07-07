@@ -50,8 +50,8 @@ cat > package/kernel/mac80211/patches/subsys/0099-fix-reenable-wlan-for-ath9k-ht
 EOF
 
 # OpenWrt mac80211 backports are configured with allnoconfig.
-# Re-enabling the WLAN Kconfig menu is not enough; force WLAN=y,
-# otherwise ATH_CARDS/ATH_COMMON/ATH9K_HTC stay behind if WLAN and ath.ko is not built.
+# Re-enabling the WLAN Kconfig menu is not enough; force WLAN + Atheros vendor gate,
+# otherwise drivers/net/wireless/ath/ is not entered and ath.ko is not built.
 python3 - <<'PY'
 from pathlib import Path
 
@@ -59,12 +59,16 @@ p = Path("package/kernel/mac80211/ath.mk")
 s = p.read_text()
 
 needle = "config-$(call config_package,ath,regular smallbuffers) += ATH_CARDS ATH_COMMON"
+force = "config-y += WLAN WLAN_VENDOR_ATH"
 
 if needle not in s:
     raise SystemExit("ath.mk: expected ATH_CARDS/ATH_COMMON line not found")
 
-if "config-y += WLAN" not in s:
-    s = s.replace(needle, "config-y += WLAN\n" + needle)
+# Remove older incomplete force if present.
+s = s.replace("config-y += WLAN\n", "")
+
+if force not in s:
+    s = s.replace(needle, force + "\n" + needle)
 
 p.write_text(s)
 PY
@@ -170,6 +174,10 @@ chmod -R 755 feeds/packages/utils/modemdata/files/usr/share
 \cp -r ../configs/my_defconfig-8x-full .config
 cat ../configs/homelab-packages.config >> .config
 make defconfig
+
+echo "=== mac80211 ath.mk forced config ==="
+grep -n "config-y += WLAN" package/kernel/mac80211/ath.mk || true
+grep -n "WLAN_VENDOR_ATH" package/kernel/mac80211/ath.mk || true
 
 echo "CONFIG_PACKAGE_trusted-firmware-a-mt7988-emmc-comb-4bg=y" >> .config
 echo "CONFIG_PACKAGE_trusted-firmware-a-mt7988-sdmmc-comb-4bg=y" >> .config
