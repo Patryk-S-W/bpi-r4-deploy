@@ -49,6 +49,26 @@ cat > package/kernel/mac80211/patches/subsys/0099-fix-reenable-wlan-for-ath9k-ht
  	depends on NET
 EOF
 
+# OpenWrt mac80211 backports are configured with allnoconfig.
+# Re-enabling the WLAN Kconfig menu is not enough; force WLAN=y,
+# otherwise ATH_CARDS/ATH_COMMON/ATH9K_HTC stay behind if WLAN and ath.ko is not built.
+python3 - <<'PY'
+from pathlib import Path
+
+p = Path("package/kernel/mac80211/ath.mk")
+s = p.read_text()
+
+needle = "config-$(call config_package,ath,regular smallbuffers) += ATH_CARDS ATH_COMMON"
+
+if needle not in s:
+    raise SystemExit("ath.mk: expected ATH_CARDS/ATH_COMMON line not found")
+
+if "config-y += WLAN" not in s:
+    s = s.replace(needle, "config-y += WLAN\n" + needle)
+
+p.write_text(s)
+PY
+
 # platform.sh: register bpi-r4-pro-8x in fit_do_upgrade, fit_check_image, platform_copy_config
 python3 -c 'f="target/linux/mediatek/filogic/base-files/lib/upgrade/platform.sh"; c=open(f).read(); c=c.replace("\tbananapi,bpi-r4-lite|\\\n\tbazis,ax3000wm","\tbananapi,bpi-r4-lite|\\\n\tbananapi,bpi-r4-pro-8x|\\\n\tbazis,ax3000wm"); c=c.replace("\tbananapi,bpi-r4-lite|\\\n\tcmcc,rax3000m","\tbananapi,bpi-r4-lite|\\\n\tbananapi,bpi-r4-pro-8x|\\\n\tcmcc,rax3000m"); open(f,"w").write(c)'
 
